@@ -16,7 +16,7 @@
   <h1 class="text-xl font-bold">Graficador rápido de desigualdades (2 variables)</h1>
 
   <!-- Entradas -->
-  <div id="inputWrap" class="grid grid-cols-2 gap-4 w-full max-w-lg"></div>
+  <div id="inputWrap" class="grid grid-cols-2 gap-4 w-full max-w-6xl"></div>
   <button id="add" class="btn bg-green-600">+ desigualdad</button>
 
   <!-- Controles -->
@@ -31,7 +31,7 @@
     </div>
   </div>
 
-  <canvas id="cv" width="640" height="480"></canvas>
+  <canvas id="cv" width="1200" height="720"></canvas>
 
 <script>
 const tpl=()=>`<div class="flex flex-col gap-1"><input class="ineq px-2 py-1 border rounded" placeholder="4*x+2*y<=100"/></div>`;
@@ -43,7 +43,7 @@ function parse(e){const ops=['<=','>=','<','>','='];const o=ops.find(op=>e.inclu
 function grid(){ctx.clearRect(0,0,cv.width,cv.height);ctx.lineWidth=1;ctx.strokeStyle='#e5e7eb';for(let x=off.x%scale;x<cv.width;x+=scale){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cv.height);ctx.stroke();}
  for(let y=off.y%scale;y<cv.height;y+=scale){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cv.width,y);ctx.stroke();}
  ctx.strokeStyle='#000';ctx.beginPath();ctx.moveTo(0,off.y);ctx.lineTo(cv.width,off.y);ctx.moveTo(off.x,0);ctx.lineTo(off.x,cv.height);ctx.stroke(); ctx.font='10px Arial';ctx.fillStyle='#000';for(let i=-cv.width/scale;i<cv.width/scale;i++){const p=tp(i,0);if(p.x>0&&p.x<cv.width)ctx.fillText(i,p.x+2,off.y+12);}for(let j=-cv.height/scale;j<cv.height/scale;j++){const p=tp(0,j);if(p.y>0&&p.y<cv.height)ctx.fillText(j,p.x+4,p.y-2);} }
-function shade(ins){const img=ctx.getImageData(0,0,cv.width,cv.height);const d=img.data;const step=4;for(let px=0;px<cv.width;px+=step)for(let py=0;py<cv.height;py+=step){const {x,y}=tc(px,py);if(ins.every(f=>f.test(x,y))){for(let dx=0;dx<step;dx++)for(let dy=0;dy<step;dy++){const id=((py+dy)*cv.width+px+dx)*4;d[id]=255;d[id+1]=255;d[id+2]=150;d[id+3]=90;}}}ctx.putImageData(img,0,0);} // transparencia 90/255
+function shade(ins){const img=ctx.getImageData(0,0,cv.width,cv.height);const d=img.data;const step=4;for(let px=0;px<cv.width;px+=step)for(let py=0;py<cv.height;py+=step){const {x,y}=tc(px,py);if(ins.every(f=>f.test(x,y))){for(let dx=0;dx<step;dx++)for(let dy=0;dy<step;dy++){const id=((py+dy)*cv.width+px+dx)*4;d[id]=255;d[id+1]=255;d[id+2]=150;d[id+3]=50;}}}ctx.putImageData(img,0,0);} // transparencia ajustada
 function border(ins){ins.forEach((f,i)=>{ctx.strokeStyle=f.color;ctx.lineWidth=2;ctx.beginPath();let started=false,lx=0,ly=0;
  for(let px=0;px<cv.width;px++){let found=false;for(let py=0;py<cv.height;py++){const {x,y}=tc(px,py);if(Math.abs(Function('x','y',`return ${f.expr}`)(x,y))<1e-2){if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);lx=px;ly=py;found=true;break;}} }
  ctx.stroke();ctx.fillStyle=f.color;ctx.font='12px Arial';ctx.fillText(f.raw,lx+4,ly-4);});}
@@ -52,8 +52,7 @@ function verts(ins){const vs=[];for(let i=0;i<ins.length;i++)for(let j=i+1;j<ins
  vs.forEach(v=>{const p=tp(v.x,v.y);ctx.beginPath();ctx.fillStyle='#000';ctx.arc(p.x,p.y,3,0,2*Math.PI);ctx.fill();ctx.fillText(`(${v.x},${v.y})`,p.x+4,p.y-4);} );}
 function plot(){try{const ins=[...document.querySelectorAll('.ineq')].map(e=>e.value.trim()).filter(Boolean).map(parse);grid();shade(ins);border(ins);verts(ins);}catch(e){alert(e);} }
 
-// controles
-document.getElementById('draw').onclick=plot;document.getElementById('zin').onclick=()=>{scale=Math.min(scale+10,120);plot();};document.getElementById('zout').onclick=()=>{scale=Math.max(scale-10,10);plot();};document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{const s=20;switch(b.dataset.d){case'up':off.y+=s;break;case'down':off.y-=s;break;case'left':off.x+=s;break;case'right':off.x-=s;break;default:off={x:cv.width/2,y:cv.height/2};}plot();});
+document.getElementById('draw').onclick=plot;document.getElementById('zin').onclick=()=>{scale=Math.min(scale+10,120);plot();};document.getElementById('zout').onclick=()=>{scale=Math.max(scale-10,10);plot();};document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{const s=40;switch(b.dataset.d){case'up':off.y+=s;break;case'down':off.y-=s;break;case'left':off.x+=s;break;case'right':off.x-=s;break;default:off={x:cv.width/2,y:cv.height/2};}plot();});
 let drag=false,start={x:0,y:0},o0={x:0,y:0};cv.onpointerdown=e=>{drag=true;start={x:e.clientX,y:e.clientY};o0={...off};cv.setPointerCapture(e.pointerId);};cv.onpointermove=e=>{if(!drag)return;off.x=o0.x+(e.clientX-start.x);off.y=o0.y+(e.clientY-start.y);plot();};cv.onpointerup=()=>drag=false;cv.onwheel=e=>{e.preventDefault();scale=Math.max(10,Math.min(120,scale+(e.deltaY>0?-10:10)));plot();};
 
 grid();
