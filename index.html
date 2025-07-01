@@ -1,128 +1,83 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8"/>
-<title>Graficador rápido de desigualdadessi</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js"></script>
+<meta charset="UTF-8" />
+<title>Graficador lineal OFF‑LINE</title>
 <style>
-  canvas{background:#fff;border:1px solid #000;border-radius:8px;cursor:grab;touch-action:none}
-  canvas:active{cursor:grabbing}
-  .btn{background:#4b5563;color:#fff;font-weight:600;border-radius:6px;padding:6px 12px}
-  .mv{width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+  body{font-family:Arial,sans-serif;background:#f4f4f5;margin:0;padding:20px;display:flex;flex-direction:column;align-items:center;gap:14px}
+  h1{margin:0;font-size:22px;font-weight:700}
+  .btn{background:#374151;color:#fff;padding:6px 14px;border:none;border-radius:6px;font-weight:600;cursor:pointer}
+  .btn:hover{background:#1f2937}
+  .mv{width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-weight:700}
+  #canvas{border:1px solid #000;border-radius:8px;cursor:grab;touch-action:none;background:#fff}
+  #canvas:active{cursor:grabbing}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;max-width:680px;width:100%}
+  input{padding:6px;border:1px solid #ccc;border-radius:6px;width:100%}
 </style>
 </head>
-<body class="bg-gray-100 p-6 flex flex-col items-center gap-4">
-  <h1 class="text-xl font-bold">Graficador rápido de desigualdades (2 variables)</h1>
+<body>
+  <h1>Graficador de desigualdades (offline ligero)</h1>
 
-  <!-- Entradas -->
-  <div id="inputWrap" class="grid grid-cols-2 gap-4 w-full max-w-5xl"></div>
-  <button id="add" class="btn bg-green-600">+ desigualdad</button>
+  <div id="inputs" class="grid2"></div>
+  <button id="add" class="btn" style="background:#16a34a">+ desigualdad</button>
 
-  <!-- Controles -->
-  <div class="flex gap-3 items-center">
-    <button id="draw" class="btn bg-blue-600">Graficar</button>
-    <button id="zin" class="btn">+</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button id="draw" class="btn" style="background:#2563eb">Graficar</button>
+    <button id="zin"  class="btn">+</button>
     <button id="zout" class="btn">−</button>
-    <div class="grid grid-cols-3 gap-0 select-none">
-      <div></div><button class="btn mv" data-d="up">▲</button><div></div>
-      <button class="btn mv" data-d="left">◀</button><button class="btn mv" data-d="re">⌖</button><button class="btn mv" data-d="right">▶</button>
-      <div></div><button class="btn mv" data-d="down">▼</button><div></div>
+    <div style="display:grid;grid-template-columns:repeat(3,34px);gap:0;user-select:none">
+      <div></div><button class="btn mv" data-mv="up">▲</button><div></div>
+      <button class="btn mv" data-mv="left">◀</button><button class="btn mv" data-mv="re">⌖</button><button class="btn mv" data-mv="right">▶</button>
+      <div></div><button class="btn mv" data-mv="down">▼</button><div></div>
     </div>
   </div>
 
-  <canvas id="cv" width="1200" height="720"></canvas>
+  <canvas id="canvas" width="1200" height="720"></canvas>
 
 <script>
-const tpl=()=>`<div class="flex flex-col gap-1"><input class="ineq px-2 py-1 border rounded" placeholder="4*x+2*y<=100"/></div>`;
-const wrap=document.getElementById('inputWrap'); for(let i=0;i<3;i++)wrap.insertAdjacentHTML('beforeend',tpl()); document.getElementById('add').onclick=()=>wrap.insertAdjacentHTML('beforeend',tpl());
-const cv=document.getElementById('cv'); const ctx=cv.getContext('2d'); let scale=40, off={x:cv.width/2,y:cv.height/2};
-const pal=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899'];
-const tp=(x,y)=>({x:off.x+x*scale,y:off.y-y*scale}); const tc=(px,py)=>({x:(px-off.x)/scale,y:(off.y-py)/scale});
-function parse(e){
-  const ops=['<=','>=','<','>','='];
-  const o=ops.find(op=>e.includes(op));
-  if(!o)throw`Operador? -> ${e}`;
-  const [l,r]=e.split(o);
-  const ex=`(${math.parse(l)})-(${math.parse(r)})`;
-  const test=(x,y)=>{const v=Function('x','y',`return ${ex}`)(x,y);
-    switch(o){case'<=':return v<=1e-9;case'<':return v<0;case'>=':return v>=-1e-9;case'>':return v>0;default:return Math.abs(v)<1e-9;}};
-  return{raw:e,expr:ex,test,color:pal.shift()||'#000'};
-}
-function grid(){
-  ctx.clearRect(0,0,cv.width,cv.height);
-  ctx.lineWidth=1;ctx.strokeStyle='#e5e7eb';
-  for(let x=off.x%scale;x<cv.width;x+=scale){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,cv.height);ctx.stroke();}
-  for(let y=off.y%scale;y<cv.height;y+=scale){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(cv.width,y);ctx.stroke();}
-  ctx.strokeStyle='#000';ctx.beginPath();ctx.moveTo(0,off.y);ctx.lineTo(cv.width,off.y);ctx.moveTo(off.x,0);ctx.lineTo(off.x,cv.height);ctx.stroke();
-  ctx.font='10px Arial';ctx.fillStyle='#000';
-  for(let i=-cv.width/scale;i<cv.width/scale;i++){const p=tp(i,0);if(p.x>0&&p.x<cv.width)ctx.fillText(i,p.x+2,off.y+12);}
-  for(let j=-cv.height/scale;j<cv.height/scale;j++){const p=tp(0,j);if(p.y>0&&p.y<cv.height)ctx.fillText(j,p.x+4,p.y-2);}
-}
-function shade(ins){
-  const img=ctx.getImageData(0,0,cv.width,cv.height);
-  const d=img.data;const step=4;
-  for(let px=0;px<cv.width;px+=step)for(let py=0;py<cv.height;py+=step){
-    const {x,y}=tc(px,py);
-    if(ins.every(f=>f.test(x,y))){
-      for(let dx=0;dx<step;dx++)for(let dy=0;dy<step;dy++){
-        const id=((py+dy)*cv.width+px+dx)*4;
-        d[id]=255;d[id+1]=255;d[id+2]=180;d[id+3]=80; // más transparente
-      }
-    }
-  }
-  ctx.putImageData(img,0,0);
-}
-function border(ins){
-  ins.forEach((f)=>{
-    ctx.strokeStyle=f.color;ctx.lineWidth=2;ctx.beginPath();let started=false,lx=0,ly=0;
-    for(let px=0;px<cv.width;px++){
-      for(let py=0;py<cv.height;py++){
-        const {x,y}=tc(px,py);
-        if(Math.abs(Function('x','y',`return ${f.expr}`)(x,y))<1e-2){
-          if(!started){ctx.moveTo(px,py);started=true;}else ctx.lineTo(px,py);
-          lx=px;ly=py;
-          break;
-        }
-      }
-    }
-    ctx.stroke();
-    ctx.fillStyle=f.color;
-    ctx.font='12px Arial';
-    ctx.fillText(f.raw,lx+6,ly-6);
-  });
-}
-function verts(ins){
-  const vs=[];
-  for(let i=0;i<ins.length;i++){
-    for(let j=i+1;j<ins.length;j++){
-      try{
-        const eq1=ins[i].raw.replace(/<=|>=|<|>/,'=');
-        const eq2=ins[j].raw.replace(/<=|>=|<|>/,'=');
-        const sys=math.simplify([eq1,eq2]);
-        const sol=math.evaluate(`solve([${eq1},${eq2}],[x,y])`);
-        if(sol.x!==undefined&&sol.y!==undefined){
-          const x=Number(sol.x.toFixed(2)),y=Number(sol.y.toFixed(2));
-          if(ins.every(f=>f.test(x,y)))vs.push({x,y});
-        }
-      }catch(e){}
-    }
-  }
-  vs.forEach(v=>{const p=tp(v.x,v.y);ctx.beginPath();ctx.fillStyle='#000';ctx.arc(p.x,p.y,3,0,2*Math.PI);ctx.fill();ctx.fillText(`(${v.x},${v.y})`,p.x+6,p.y-6);});
-}
-function plot(){try{const ins=[...document.querySelectorAll('.ineq')].map(e=>e.value.trim()).filter(Boolean).map(parse);grid();shade(ins);border(ins);verts(ins);}catch(e){alert(e);}}
+/* ---------- utilidades ---------- */
+const C=document.getElementById('canvas');const ctx=C.getContext('2d');
+let SCALE=40, ORG={x:C.width/2,y:C.height/2};
+const toPix=(x,y)=>({x:ORG.x+x*SCALE,y:ORG.y-y*SCALE});
+const toCoord=(px,py)=>({x:(px-ORG.x)/SCALE,y:(ORG.y-py)/SCALE});
+const COLORS=['#ef4444','#3b82f6','#10b981','#f59e0b','#8b5cf6','#ec4899'];
 
-document.getElementById('draw').onclick=plot;
-document.getElementById('zin').onclick=()=>{scale=Math.min(scale+10,120);plot();};
-document.getElementById('zout').onclick=()=>{scale=Math.max(scale-10,10);plot();};
-document.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{const s=20;switch(b.dataset.d){case'up':off.y+=s;break;case'down':off.y-=s;break;case'left':off.x+=s;break;case'right':off.x-=s;break;default:off={x:cv.width/2,y:cv.height/2};}plot();});
-let drag=false,start={x:0,y:0},o0={x:0,y:0};
-cv.onpointerdown=e=>{drag=true;start={x:e.clientX,y:e.clientY};o0={...off};cv.setPointerCapture(e.pointerId);};
-cv.onpointermove=e=>{if(!drag)return;off.x=o0.x+(e.clientX-start.x);off.y=o0.y+(e.clientY-start.y);plot();};
-cv.onpointerup=()=>drag=false;
-cv.onwheel=e=>{e.preventDefault();scale=Math.max(10,Math.min(120,scale+(e.deltaY>0?-10:10)));plot();};
+function addInput(){inputs.insertAdjacentHTML('beforeend',`<input class="ineq" placeholder="4*x+2*y<=100"/>`);} // simple
+for(let i=0;i<3;i++)addInput();
 
-grid();
+document.getElementById('add').onclick=addInput;
+
+/* Parseo lineal ax+by op c */
+function parseIneq(str){str=str.replace(/\s+/g,'');const m=str.match(/(.+)(<=|>=|<|>|=)(.+)/);if(!m)throw'Formato inválido: '+str;const left=m[1],op=m[2],right=Number(m[3]);
+  const coef=exprToCoef(left);return{raw:str,a:coef.a,b:coef.b,c:right,op,color:COLORS.shift()||'#000',test:(x,y)=>cmp(coef.a*x+coef.b*y,op,right)};}
+function exprToCoef(exp){let a=0,b=0;exp=exp.replace(/-/g,'+-');const terms=exp.split('+').filter(Boolean);
+  terms.forEach(t=>{if(t.includes('x')){a+=numCoef(t,'x');}else if(t.includes('y')){b+=numCoef(t,'y');}else{a+=0;}});
+  return{a,b};}
+function numCoef(term,varChar){term=term.replace(varChar,'');if(term==''||term=='+')return 1;if(term=='-')return -1;return Number(term);} 
+function cmp(val,op,c){switch(op){case'<=':return val<=c+1e-9;case'>=':return val>=c-1e-9;case'<':return val<c;case'>':return val>c;default:return Math.abs(val-c)<1e-9;}}
+
+/* graficar */
+function drawGrid(){ctx.clearRect(0,0,C.width,C.height);ctx.lineWidth=1;ctx.strokeStyle='#e5e7eb';for(let x=ORG.x%SCALE;x<C.width;x+=SCALE){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,C.height);ctx.stroke();}
+  for(let y=ORG.y%SCALE;y<C.height;y+=SCALE){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(C.width,y);ctx.stroke();}
+  ctx.strokeStyle='#000';ctx.beginPath();ctx.moveTo(0,ORG.y);ctx.lineTo(C.width,ORG.y);ctx.moveTo(ORG.x,0);ctx.lineTo(ORG.x,C.height);ctx.stroke();
+  ctx.font='10px Arial';ctx.fillStyle='#000';for(let i=-C.width/SCALE;i<C.width/SCALE;i++){const p=toPix(i,0);if(p.x>0&&p.x<C.width)ctx.fillText(i,p.x+2,ORG.y+12);}for(let j=-C.height/SCALE;j<C.height/SCALE;j++){const p=toPix(0,j);if(p.y>0&&p.y<C.height)ctx.fillText(j,p.x+4,p.y-2);} }
+
+function shade(reg){const img=ctx.createImageData(C.width,C.height);const d=img.data;const step=6;for(let px=0;px<C.width;px+=step)for(let py=0;py<C.height;py+=step){const {x,y}=toCoord(px,py);if(reg.every(f=>f.test(x,y))){for(let dx=0;dx<step;dx++)for(let dy=0;dy<step;dy++){const id=((py+dy)*C.width+px+dx)*4;d[id]=255;d[id+1]=255;d[id+2]=170;d[id+3]=70;}}}ctx.putImageData(img,0,0);} // más ligero + transparente
+
+function drawLines(reg){reg.forEach(r=>{ctx.strokeStyle=r.color;ctx.lineWidth=2;ctx.beginPath();let first=true,endPt=null;for(let px=0;px<C.width;px++){let found=false;for(let py=0;py<C.height;py++){const {x,y}=toCoord(px,py);if(Math.abs(r.a*x+r.b*y-r.c)<1e-2){const p={x:px,y:py};if(first){ctx.moveTo(p.x,p.y);first=false;}else ctx.lineTo(p.x,p.y);endPt=p;found=true;break;}}}ctx.stroke();if(endPt){ctx.fillStyle=r.color;ctx.font='12px Arial';ctx.fillText(r.raw,endPt.x+6,endPt.y-6);} });}
+
+function findVerts(reg){const pts=[];for(let i=0;i<reg.length;i++)for(let j=i+1;j<reg.length;j++){const d=reg[i].a*reg[j].b-reg[j].a*reg[i].b;if(Math.abs(d)<1e-9)continue;const x=(reg[i].c*reg[j].b-reg[j].c*reg[i].b)/d;const y=(reg[i].a*reg[j].c-reg[j].a*reg[i].c)/d; if(isFinite(x)&&isFinite(y)&&reg.every(f=>f.test(x,y)))pts.push({x:round(x),y:round(y)});} drawVerts(pts);}function round(v){return Math.round(v*100)/100;}
+function drawVerts(pts){pts.forEach(p=>{const pix=toPix(p.x,p.y);ctx.beginPath();ctx.fillStyle='#000';ctx.arc(pix.x,pix.y,3,0,Math.PI*2);ctx.fill();ctx.fillText(`(${p.x},${p.y})`,pix.x+5,pix.y-5);} );}
+
+function plot(){try{const arr=[...document.querySelectorAll('.ineq')].map(i=>i.value.trim()).filter(Boolean).map(parseIneq);drawGrid();shade(arr);drawLines(arr);findVerts(arr);}catch(e){alert(e);}}
+
+document.getElementById('draw').onclick=plot;document.getElementById('zin').onclick=()=>{SCALE=Math.min(SCALE+10,120);plot();};document.getElementById('zout').onclick=()=>{SCALE=Math.max(SCALE-10,10);plot();};
+
+document.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{const s=40;switch(b.dataset.mv){case'up':ORG.y+=s;break;case'down':ORG.y-=s;break;case'left':ORG.x+=s;break;case'right':ORG.x-=s;break;default:ORG={x:C.width/2,y:C.height/2};}plot();});
+let drag=false,start={},base={};C.onpointerdown=e=>{drag=true;start={x:e.clientX,y:e.clientY};base={...ORG};C.setPointerCapture(e.pointerId);};C.onpointermove=e=>{if(!drag)return;ORG.x=base.x+(e.clientX-start.x);ORG.y=base.y+(e.clientY-start.y);plot();};C.onpointerup=()=>drag=false;C.onwheel=e=>{e.preventDefault();SCALE=Math.max(10,Math.min(120,SCALE+(e.deltaY>0?-10:10)));plot();};
+
+drawGrid();
 </script>
 </body>
 </html>
+
